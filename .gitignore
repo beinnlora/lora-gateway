@@ -10,3 +10,4 @@ gateway
 telemetry.txt
 packets.txt
 ssdv
+ThingSpeak.api
