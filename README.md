@@ -1,5 +1,14 @@
+This is the LoRa RECEIVER to complement the AIS REPEATER code under the separate repository.
+
+AIS REPEATER receives AIS messages and transmits back to this RaspberryPi via LoRa
+
+This code receives and re-formats AIS messages and broadcasts AIS sentences via UDP
+
+
 amended to include functions for AIS packet reconstruction and fowarding over LAN
 amended to include functions for telemetry (Vbat, sleep) reception and publish to ThingSpeak.
+
+
 
 
 Original readme.md below; 
