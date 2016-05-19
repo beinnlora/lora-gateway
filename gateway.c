@@ -509,8 +509,11 @@ void logVoltage (char *message)
 	//char* datatosend = concat("{ \"Voltage\": ",&message);
 	//char* datatosend = concat(d1,myend);
 	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
-	char myurl[128];
-	strcpy(myurl,"https://api.thingspeak.com/update?api_key=YOURAPIKEYHERE&field1=");
+	char myurl[255];
+	
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=");
+	strcat(myurl,Config.TSAPIKEY);
+	strcat(myurl,"&field1=");
 	
 	strcat(myurl,message);
 	LogMessage (myurl);
@@ -589,8 +592,12 @@ void logSleep (char *message)
 	//char* datatosend = concat("{ \"Voltage\": ",&message);
 	//char* datatosend = concat(d1,myend);
 	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
-	char myurl[128];
-	strcpy(myurl,"https://api.thingspeak.com/update?api_key=YOURAPIKEYHERE&field2=");
+	char myurl[255];
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=");
+		
+	strcat(myurl,Config.TSAPIKEY);
+	strcat(myurl,"&field2=");
+	
 	
 	strcat(myurl,message);
 	LogMessage (myurl);
@@ -1970,6 +1977,33 @@ void LoadConfigFile()
 
 	fclose(fp);
 }
+
+/////
+void LoadThingSpeak()
+{
+	FILE *fp;
+	char *filename = "ThingSpeak.api";
+	char Keyword[32];
+	int Channel, Temp;
+	char TempString[16];
+
+	
+	
+	if ((fp = fopen(filename, "r")) == NULL)
+	{
+		printf("\nFailed to open config file %s (error %d - %s).\nPlease check that it exists and has read permission.\n", filename, errno, strerror(errno));
+		exit(1);
+	}
+
+	// Thingspeak API key config
+	ReadString(fp, "taspi", Config.TSAPIKEY, sizeof(Config.TSAPIKEY), 1);
+	LogMessage("Thingspeak API key = '%s'\n", Config.TSAPIKEY);
+	
+	
+
+	fclose(fp);
+}
+/////
 
 void LoadPayloadFile(int ID)
 {
