@@ -8,7 +8,8 @@ This code receives and re-formats AIS messages and broadcasts AIS sentences via 
 amended to include functions for AIS packet reconstruction and fowarding over LAN
 amended to include functions for telemetry (Vbat, sleep) reception and publish to ThingSpeak.
 
-
+ADD YOUR ThingSpeak API feed key to the file "ThinkSpeak.api"
+(use the .example file as a template)
 
 
 Original readme.md below; 
