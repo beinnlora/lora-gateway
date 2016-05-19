@@ -1,2 +1,3 @@
 #add your ThingSpeak feed API here
+# save the file as ThingSpeak.api
 tsapi=
