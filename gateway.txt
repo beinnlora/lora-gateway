@@ -1,4 +1,4 @@
-tracker=2M1ECY/B
+tracker=YOURCALL/B
 EnableHabitat=N
 EnableSSDV=N
 JPGFolder=ssdv
