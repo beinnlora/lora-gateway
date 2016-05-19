@@ -2445,6 +2445,7 @@ int main(int argc, char **argv)
 	
 	LoadConfigFile();
 	LoadPayloadFiles();
+	LoadThingSpeak();
 	
 	if (wiringPiSetup() < 0)
 	{
