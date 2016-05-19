@@ -16,8 +16,13 @@ ADD YOUR ThingSpeak API feed key to the file "ThinkSpeak.api"
 Original readme.md below; 
 compilation the same (make)
 execution the same (sudo ./gateway)
+pin values in gateway.txt are correct for Uputronics Raspberry Pi Lora shield with 
+https://store.uputronics.com/index.php?route=product/product&product_id=68
+RFM98W in position CE1
+
 
 (no longer) Part of the LoRa Balloon Tracking System
+
 
 Runs on a Raspberry Pi with 1 or 2 RFM98HW modules attached to the SPI port.
 Also works with other compatible HopeRF and Semtec LoRa devices.
