@@ -510,7 +510,7 @@ void logVoltage (char *message)
 	//char* datatosend = concat(d1,myend);
 	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
 	char myurl[128];
-	strcpy(myurl,"https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=");
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=YOURAPIKEYHERE&field1=");
 	
 	strcat(myurl,message);
 	LogMessage (myurl);
@@ -590,7 +590,7 @@ void logSleep (char *message)
 	//char* datatosend = concat(d1,myend);
 	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
 	char myurl[128];
-	strcpy(myurl,"https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field2=");
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=YOURAPIKEYHERE&field2=");
 	
 	strcat(myurl,message);
 	LogMessage (myurl);
