@@ -102,6 +102,7 @@ struct TConfig
 	char SMSFolder[64];
 	char antenna[64];
 	int EnableDev;
+	char TSAPIKEY[128];
 };
 
 extern struct TConfig Config;
