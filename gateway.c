@@ -1983,9 +1983,7 @@ void LoadThingSpeak()
 {
 	FILE *fp;
 	char *filename = "ThingSpeak.api";
-	char Keyword[32];
-	int Channel, Temp;
-	char TempString[16];
+	
 
 	
 	
@@ -1996,7 +1994,7 @@ void LoadThingSpeak()
 	}
 
 	// Thingspeak API key config
-	ReadString(fp, "taspi", Config.TSAPIKEY, sizeof(Config.TSAPIKEY), 1);
+	ReadString(fp, "tsapi", Config.TSAPIKEY, sizeof(Config.TSAPIKEY), 1);
 	LogMessage("Thingspeak API key = '%s'\n", Config.TSAPIKEY);
 	
 	
