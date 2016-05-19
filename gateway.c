@@ -18,6 +18,9 @@
 #include <curses.h>
 #include <math.h>
 #include <dirent.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
@@ -115,6 +118,14 @@ uint8_t currentMode = 0x81;
 #define LNA_OFF_GAIN                0x00
 #define LNA_LOW_GAIN                0xC0  // 1100 0000
 
+
+//UDP 
+
+#define SERVER "192.168.1.255"
+#define BUFLEN 512  //Max length of buffer
+#define PORT 8888   //The port on which to send data
+
+
 struct TPayload
 {
 	int InUse;
@@ -167,27 +178,6 @@ uint8_t readRegister(int Channel, uint8_t reg)
     return val;
 }
 
-void LogPacket(int Channel, int8_t SNR, int RSSI, double FreqError, int Bytes, unsigned char MessageType)
-{
-	if (Config.EnablePacketLogging)
-	{
-		FILE *fp;
-		
-		if ((fp = fopen("packets.txt", "at")) != NULL)
-		{
-			time_t now;
-			struct tm *tm;
-			
-			now = time(0);
-			tm = localtime(&now);
-		
-			fprintf(fp, "%02d:%02d:%02d - Ch %d, SNR %d, RSSI %d, FreqErr %.1lf, Bytes %d, Type %02Xh\n", tm->tm_hour, tm->tm_min, tm->tm_sec, Channel, SNR, RSSI, FreqError, Bytes, MessageType);
-			
-			fclose(fp);
-		}
-	}
-}
-
 void LogTelemetryPacket(char *Telemetry)
 {
 	if (Config.EnableTelemetryLogging)
@@ -203,7 +193,6 @@ void LogTelemetryPacket(char *Telemetry)
 			tm = localtime(&now);
 		
 			fprintf(fp, "%02d:%02d:%02d - %s\n", tm->tm_hour, tm->tm_min, tm->tm_sec, Telemetry);
-			
 			fclose(fp);
 		}
 	}
@@ -461,6 +450,208 @@ int SSDVPacketCount(int Channel, int ThreadIndex)
 	return Count;
 }
 
+void sendUDP(char *message)
+{
+
+struct sockaddr_in si_other;
+    int s, i, slen=sizeof(si_other);
+    
+    
+ 
+    if ( (s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    {
+      LogMessage("die 1");
+    }
+	
+    memset((char *) &si_other, 0, sizeof(si_other));
+    si_other.sin_family = AF_INET;
+    si_other.sin_port = htons(PORT);
+    //set socket as broadcast
+    int broadcastEnable=1;
+    int ret = setsockopt(s,SOL_SOCKET,SO_BROADCAST, &broadcastEnable,sizeof(broadcastEnable));
+    if (inet_aton(SERVER , &si_other.sin_addr) == 0) 
+    {
+        LogMessage("inet_aton() failed\n");
+        return;
+    }
+ 
+    
+         
+        //send the message
+        if (sendto(s, message, strlen(message) , 0 , (struct sockaddr *) &si_other, slen)==-1)
+        {
+            LogMessage("sendto()");
+        }
+         
+        
+    
+ 
+    close(s);
+    return ;
+
+}
+
+void logVoltage (char *message)
+{
+//find first space and return chars after that
+//void UploadListenerTelemetry(char *callsign, float gps_lat, float gps_lon, char *antenna)
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+  if(curl) {
+    //struct curl_slist *chunk = NULL;
+    
+	//char* datatosend = concat(message,message);
+	//char* beg= "{ \"Voltage\": ";
+	//har* myend = "}";
+	// construct message to log voltage
+	//char* datatosend = concat("{ \"Voltage\": ",&message);
+	//char* datatosend = concat(d1,myend);
+	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
+	char myurl[128];
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=");
+	
+	strcat(myurl,message);
+	LogMessage (myurl);
+    /* Remove a header curl would otherwise add by itself */ 
+    //chunk = curl_slist_append(chunk, "Accept: */*");
+ 
+    /* Add a custom header */ 
+    //chunk = curl_slist_append(chunk, "Content-Type: text");
+    //disable chunked upload 
+    //chunk = curl_slist_append(chunk, "Transfer-Encoding:");
+    //chunk = curl_slist_append(chunk, "Expect:");
+    /* Modify a header curl otherwise adds differently */ 
+    //chunk = curl_slist_append(chunk, "Host: example.com");
+	
+    /* Add a header with "blank" contents to the right of the colon. Note that
+       we're then using a semicolon in the string we pass to curl! */ 
+    //chunk = curl_slist_append(chunk, "x-aio-key: 8f9ed1530e4f4cdca2ac58825f1cfb07");
+ 
+    /* set our custom set of headers */ 
+    //res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+
+
+//for https
+curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+
+	//PUT - upload method uses put by defaul to HTTP
+	/* enable uploading */
+	//curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+	//curl_easy_setopt(curl, CURLOPT_URL, "192.168.1.13");
+	//char* myurl = concat(datatosend,message);
+	curl_easy_setopt(curl, CURLOPT_URL, myurl);
+	
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    //curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+     //curl_easy_setopt(curl, CURLOPT_POSTFIELDS, datatosend);
+     //curl_easy_setopt(curl,CURLOPT_POSTFIELDSIZE, strlen(datatosend));
+    
+ //DISABLED HERE
+   res = curl_easy_perform(curl);
+    /* Check for errors */ 
+    if(res != CURLE_OK)
+      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+              curl_easy_strerror(res));
+ 
+    /* always cleanup */ 
+    curl_easy_cleanup(curl);
+ 
+    /* free the custom headers */ 
+    //curl_slist_free_all(chunk);
+    
+    //and the opts
+    //curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, NULL);
+  }
+  return ;
+
+}
+
+void logSleep (char *message)
+{
+//find first space and return chars after that
+//void UploadListenerTelemetry(char *callsign, float gps_lat, float gps_lon, char *antenna)
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+  if(curl) {
+    //struct curl_slist *chunk = NULL;
+    
+	//char* datatosend = concat(message,message);
+	//char* beg= "{ \"Voltage\": ";
+	//har* myend = "}";
+	// construct message to log voltage
+	//char* datatosend = concat("{ \"Voltage\": ",&message);
+	//char* datatosend = concat(d1,myend);
+	//char* myurl = "https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field1=";
+	char myurl[128];
+	strcpy(myurl,"https://api.thingspeak.com/update?api_key=JN37N3CH3XOZIV21&field2=");
+	
+	strcat(myurl,message);
+	LogMessage (myurl);
+    /* Remove a header curl would otherwise add by itself */ 
+    //chunk = curl_slist_append(chunk, "Accept: */*");
+ 
+    /* Add a custom header */ 
+    //chunk = curl_slist_append(chunk, "Content-Type: text");
+    //disable chunked upload 
+    //chunk = curl_slist_append(chunk, "Transfer-Encoding:");
+    //chunk = curl_slist_append(chunk, "Expect:");
+    /* Modify a header curl otherwise adds differently */ 
+    //chunk = curl_slist_append(chunk, "Host: example.com");
+	
+    /* Add a header with "blank" contents to the right of the colon. Note that
+       we're then using a semicolon in the string we pass to curl! */ 
+    //chunk = curl_slist_append(chunk, "x-aio-key: 8f9ed1530e4f4cdca2ac58825f1cfb07");
+ 
+    /* set our custom set of headers */ 
+    //res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+
+
+//for https
+curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+
+	//PUT - upload method uses put by defaul to HTTP
+	/* enable uploading */
+	//curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+	//curl_easy_setopt(curl, CURLOPT_URL, "192.168.1.13");
+	//char* myurl = concat(datatosend,message);
+	curl_easy_setopt(curl, CURLOPT_URL, myurl);
+	
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    //curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+     //curl_easy_setopt(curl, CURLOPT_POSTFIELDS, datatosend);
+     //curl_easy_setopt(curl,CURLOPT_POSTFIELDSIZE, strlen(datatosend));
+    
+ //DISABLED HERE
+   res = curl_easy_perform(curl);
+    /* Check for errors */ 
+    if(res != CURLE_OK)
+      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+              curl_easy_strerror(res));
+ 
+    /* always cleanup */ 
+    curl_easy_cleanup(curl);
+ 
+    /* free the custom headers */ 
+    //curl_slist_free_all(chunk);
+    
+    //and the opts
+    //curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, NULL);
+  }
+  return ;
+
+}
+
+
 void ShowPacketCounts(int Channel)
 {
 	if (Config.LoRaDevices[Channel].InUse)
@@ -481,6 +672,141 @@ void ShowPacketCounts(int Channel)
 		ChannelPrintf(Channel, 5, 16, "SSDV %s", SSDVPacketString);
 	}
 }
+
+/*string functins here
+ * */
+ char *str_replace(char *haystack, size_t haystacksize,
+                    const char *oldneedle, const char *newneedle);
+
+// ------------------------------------------------------------------
+// Implementation of function
+// ------------------------------------------------------------------
+#define SUCCESS (char *)haystack
+#define FAILURE (void *)NULL
+
+static bool
+locate_forward(char **needle_ptr, char *read_ptr, 
+        const char *needle, const char *needle_last);
+static bool
+locate_backward(char **needle_ptr, char *read_ptr, 
+        const char *needle, const char *needle_last);
+
+char *str_replace(char *haystack, size_t haystacksize,
+                    const char *oldneedle, const char *newneedle)
+{   
+    size_t oldneedle_len = strlen(oldneedle);
+    size_t newneedle_len = strlen(newneedle);
+    char *oldneedle_ptr;    // locates occurences of oldneedle
+    char *read_ptr;         // where to read in the haystack
+    char *write_ptr;        // where to write in the haystack
+    const char *oldneedle_last =  // the last character in oldneedle
+        oldneedle +             
+        oldneedle_len - 1;      
+
+    // Case 0: oldneedle is empty
+    if (oldneedle_len == 0)
+        return SUCCESS;     // nothing to do; define as success
+
+    // Case 1: newneedle is not longer than oldneedle
+    if (newneedle_len <= oldneedle_len) {       
+        // Pass 1: Perform copy/replace using read_ptr and write_ptr
+        for (oldneedle_ptr = (char *)oldneedle,
+            read_ptr = haystack, write_ptr = haystack; 
+            *read_ptr != '\0';
+            read_ptr++, write_ptr++)
+        {
+            *write_ptr = *read_ptr;         
+            bool found = locate_forward(&oldneedle_ptr, read_ptr,
+                        oldneedle, oldneedle_last);
+            if (found)  {   
+                // then perform update
+                write_ptr -= oldneedle_len;
+                memcpy(write_ptr+1, newneedle, newneedle_len);
+                write_ptr += newneedle_len;
+            }               
+        } 
+        *write_ptr = '\0';
+        return SUCCESS;
+    }
+
+    // Case 2: newneedle is longer than oldneedle
+    else {
+        size_t diff_len =       // the amount of extra space needed 
+            newneedle_len -     // to replace oldneedle with newneedle
+            oldneedle_len;      // in the expanded haystack
+
+        // Pass 1: Perform forward scan, updating write_ptr along the way
+        for (oldneedle_ptr = (char *)oldneedle,
+            read_ptr = haystack, write_ptr = haystack;
+            *read_ptr != '\0';
+            read_ptr++, write_ptr++)
+        {
+            bool found = locate_forward(&oldneedle_ptr, read_ptr, 
+                        oldneedle, oldneedle_last);
+            if (found) {    
+                // then advance write_ptr
+                write_ptr += diff_len;
+            }
+            if (write_ptr >= haystack+haystacksize)
+                return FAILURE; // no more room in haystack
+        }
+
+        // Pass 2: Walk backwards through haystack, performing copy/replace
+        for (oldneedle_ptr = (char *)oldneedle_last;
+            write_ptr >= haystack;
+            write_ptr--, read_ptr--)
+        {
+            *write_ptr = *read_ptr;
+            bool found = locate_backward(&oldneedle_ptr, read_ptr, 
+                        oldneedle, oldneedle_last);
+            if (found) {    
+                // then perform replacement
+                write_ptr -= diff_len;
+                memcpy(write_ptr, newneedle, newneedle_len);
+            }   
+        }
+        return SUCCESS;
+    }
+}
+
+// locate_forward: compare needle_ptr and read_ptr to see if a match occured
+// needle_ptr is updated as appropriate for the next call
+// return true if match occured, false otherwise
+static inline bool 
+locate_forward(char **needle_ptr, char *read_ptr,
+        const char *needle, const char *needle_last)
+{
+    if (**needle_ptr == *read_ptr) {
+        (*needle_ptr)++;
+        if (*needle_ptr > needle_last) {
+            *needle_ptr = (char *)needle;
+            return true;
+        }
+    }
+    else 
+        *needle_ptr = (char *)needle;
+    return false;
+}
+
+// locate_backward: compare needle_ptr and read_ptr to see if a match occured
+// needle_ptr is updated as appropriate for the next call
+// return true if match occured, false otherwise
+static inline bool
+locate_backward(char **needle_ptr, char *read_ptr, 
+        const char *needle, const char *needle_last)
+{
+    if (**needle_ptr == *read_ptr) {
+        (*needle_ptr)--;
+        if (*needle_ptr < needle) {
+            *needle_ptr = (char *)needle_last;
+            return true;
+        }
+    }
+    else 
+        *needle_ptr = (char *)needle_last;
+    return false;
+}
+
 
 void ProcessUploadMessage(int Channel, char *Message)
 {
@@ -536,8 +862,12 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp)
    return size * nmemb;
 }
 
+
+
 void UploadListenerTelemetry(char *callsign, float gps_lat, float gps_lon, char *antenna)
 {
+	return;
+
 	int time_epoch = (int)time(NULL);
 	if (Config.EnableHabitat)
 	{
@@ -565,7 +895,7 @@ void UploadListenerTelemetry(char *callsign, float gps_lat, float gps_lon, char 
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, PostFields);
 	 
 			// Perform the request, res will get the return code
-			res = curl_easy_perform(curl);
+			//DISABLED res = curl_easy_perform(curl);
 		
 			// Check for errors
 			if(res == CURLE_OK)
@@ -652,49 +982,16 @@ void DoPositionCalcs(Channel)
 void ProcessLine(int Channel, char *Line)
 {
 	int FieldCount; 
-	int	Speed, Heading, Satellites;
-	float TempInt, TempExt;
 
-	Config.LoRaDevices[Channel].FlightMode = -1;
-	
-	if (Config.EnableDev)
-	{
-		FieldCount = sscanf(Line+2, "%15[^,],%u,%8[^,],%lf,%lf,%u,%d,%d,%d,%f,%f,%lf,%lf,%lf,%lf,%d,%d,%d,%lf,%d,%d,%d,%d,%lf,%d",
-							&(Config.LoRaDevices[Channel].Payload),
-							&(Config.LoRaDevices[Channel].Counter),
-							&(Config.LoRaDevices[Channel].Time),
-							&(Config.LoRaDevices[Channel].Latitude),
-							&(Config.LoRaDevices[Channel].Longitude),
-							&(Config.LoRaDevices[Channel].Altitude),
-							&(Config.LoRaDevices[Channel].Speed),
-							&(Config.LoRaDevices[Channel].Heading),
-							&Satellites,
-							&TempInt, &TempExt,
-							&(Config.LoRaDevices[Channel].cda),
-							&(Config.LoRaDevices[Channel].PredictedLatitude),
-							&(Config.LoRaDevices[Channel].PredictedLongitude),
-							&(Config.LoRaDevices[Channel].PredictedLandingSpeed),
-							&(Config.LoRaDevices[Channel].PredictedTime),
-							&(Config.LoRaDevices[Channel].CompassActual),
-							&(Config.LoRaDevices[Channel].CompassTarget),
-							&(Config.LoRaDevices[Channel].AirSpeed),
-							&(Config.LoRaDevices[Channel].AirDirection),
-							&(Config.LoRaDevices[Channel].ServoLeft),
-							&(Config.LoRaDevices[Channel].ServoRight),
-							&(Config.LoRaDevices[Channel].ServoTime),
-							&(Config.LoRaDevices[Channel].GlideRatio),
-							&(Config.LoRaDevices[Channel].FlightMode));
-	}
-	else
-	{
-		FieldCount = sscanf(Line+2, "%15[^,],%u,%8[^,],%lf,%lf,%u",
-							&(Config.LoRaDevices[Channel].Payload),
-							&(Config.LoRaDevices[Channel].Counter),
-							&(Config.LoRaDevices[Channel].Time),
-							&(Config.LoRaDevices[Channel].Latitude),
-							&(Config.LoRaDevices[Channel].Longitude),
-							&(Config.LoRaDevices[Channel].Altitude));
-	}
+	FieldCount = sscanf(Line+2, "%15[^,],%u,%8[^,],%lf,%lf,%u",
+						&(Config.LoRaDevices[Channel].Payload),
+						&(Config.LoRaDevices[Channel].Counter),
+						&(Config.LoRaDevices[Channel].Time),
+						&(Config.LoRaDevices[Channel].Latitude),
+						&(Config.LoRaDevices[Channel].Longitude),
+						&(Config.LoRaDevices[Channel].Altitude));
+						
+	// HAB->HAB_status = FieldCount == 6;
 }
 
 			
@@ -775,6 +1072,14 @@ void ConvertStringToHex(unsigned char *Target, unsigned char *Source, int Length
 	*Target++ = '\0';
 }
 
+char* concat(char *s1, char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
+    //in real code you would check for errors in malloc here
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
 /*
 void AddImageNumberToLog(int Channel, int ImageNumber)
 {
@@ -929,7 +1234,15 @@ struct TSSDVPackets
 	bool Packets[1024];
 };	
 */
-	
+void substring(char s[], char sub[], int p, int l) {
+   int c = 0;
+ 
+   while (c < l) {
+      sub[c] = s[p+c-1];
+      c++;
+   }
+   sub[c] = '\0';
+}	
 void ProcessSSDVMessage(int Channel, char *Message)
 {
 	// SSDV packet
@@ -951,9 +1264,9 @@ void ProcessSSDVMessage(int Channel, char *Message)
 	decode_callsign(Callsign, CallsignCode);
 								
 	ImageNumber = Message[6];
-	PacketNumber = Message[7] * 256 + Message[8];
+	PacketNumber = Message[8];
 	
-	LogMessage("Ch%d: SSDV Packet, Callsign %s, Image %d, Packet %d\n", Channel, Callsign, Message[6], PacketNumber);
+	LogMessage("Ch%d: SSDV Packet, Callsign %s, Image %d, Packet %d\n", Channel, Callsign, Message[6], Message[7] * 256 + Message[8]);
 	ChannelPrintf(Channel, 3, 1, "SSDV Packet            ");
 	
 	PreviousImageNumber = ImageNumber;
@@ -1094,7 +1407,48 @@ void DIO0_Interrupt(int Channel)
 				digitalWrite(Config.LoRaDevices[Channel].ActivityLED, 1);
 				LEDCounts[Channel] = 5;
 			}
+			 //LogMessage("Channel %d data available - %d bytes\n", Channel, Bytes);
+			 //SET OUR AIS header here
+			 unsigned char AISheader[]="\r\n!AIVDM,";
+			 unsigned char AISplaceholder[]="_";	//this is what the arduino substitutes for the header
+			 unsigned char AISmessage [500];
+			 unsigned char cleanMessage[500]; //for GUI output
+			 unsigned char AISbuffer [500];	//for reconstructed sentences
+			 substring(Message,cleanMessage,5,sizeof(Message)-5);
+			 
+			 LogMessage("Line = '%s' %02Xh  \n", cleanMessage,Message[1]);
+			//PARSE MESSAGE HERE
+			if (Message [1]==1)
+			{
+				//LogMessage("AIS MESSAGE\n");
+				//AIS message
+				//strip beginning 2 flags from LoRa message, store in AISmessage
+				substring(Message,AISmessage,5,sizeof(Message)-5);
+				//replace all instances of _ with AIVDM
+				char *temp1 = str_replace(AISmessage,500,AISplaceholder,AISheader);
+				//add !AIVDM back in at the beginning
+				//char* AISoutsub = concat(AISheader,AISmessage);
+				
+				//add crlf to the end
+				unsigned char crlf[6] = "\r\n";
+				char* AISout = concat(temp1,crlf);
+				LogMessage(AISout); 
+				sendUDP(AISout);
+			} else if  (Message [1]==0)
+			{ 
 			
+			logVoltage(cleanMessage);
+			
+			} else if  (Message [1]==2)
+			{
+				//SLEEP NOTIFIERlogSlee
+				LogMessage("sleepnotify");
+				logSleep(cleanMessage);
+			} else {
+				//unknown packet type - ??
+			}
+			
+			//reconstruct !AIVDM 
 			if (Message[1] == '!')
 			{
 				ProcessUploadMessage(Channel, Message+1);
@@ -1108,21 +1462,13 @@ void DIO0_Interrupt(int Channel)
 				ProcessTelemetryMessage(Channel, Message+1);
 				TestMessageForSMSAcknowledgement(Channel, Message+1);
 			}
-			else if (Message[1] == '>')
-			{
-				LogMessage("Flight Controller message %d bytes = %s", Bytes, Message+1);
-			}
-			else if (Message[1] == '*')
-			{
-				LogMessage("Uplink Command message %d bytes = %s", Bytes, Message+1);
-			}
 			else if (Message[1] == 0x66)
 			{
 				ProcessSSDVMessage(Channel, Message);
 			}
 			else
 			{
-				LogMessage("Unknown packet type is %02Xh, RSSI %d\n", Message[1], readRegister(Channel, REG_PACKET_RSSI) - 157);
+				//LogMessage("Unknown packet type is %02Xh, RSSI %d\n", Message[1], readRegister(Channel, REG_PACKET_RSSI) - 157);
 				ChannelPrintf(Channel, 3, 1, "Unknown Packet %d, %d bytes", Message[0], Bytes);
 				Config.LoRaDevices[Channel].UnknownCount++;
 			}
@@ -1234,12 +1580,17 @@ int receiveMessage(int Channel, unsigned char *message)
 		ShowPacketCounts(Channel);
 	}
 	else
-	{		
+	{
 		int8_t SNR;
 		int RSSI;
 		
 		currentAddr = readRegister(Channel, REG_FIFO_RX_CURRENT_ADDR);
+		// LogMessage("currentAddr = %d\n", currentAddr);
 		Bytes = readRegister(Channel, REG_RX_NB_BYTES);
+		// LogMessage("%d bytes in packet\n", Bytes);
+
+		// LogMessage("RSSI = %d\n", readRegister(Channel, REG_PACKET_RSSI) - 137);
+
 		
 		SNR = readRegister(Channel, REG_PACKET_SNR);
 		SNR /= 4;
@@ -1248,7 +1599,6 @@ int receiveMessage(int Channel, unsigned char *message)
 		{
 			RSSI += SNR;
 		}
-		
 		ChannelPrintf(Channel, 10, 1, "Packet SNR = %d, RSSI = %d      ", (int)SNR, RSSI);
 
 		FreqError = FrequencyError(Channel) / 1000;
@@ -1266,8 +1616,6 @@ int receiveMessage(int Channel, unsigned char *message)
 		
 		message[Bytes] = '\0';
 	
-		LogPacket(Channel, SNR, RSSI, FreqError, Bytes, message[1]);
-		
 		if(Config.LoRaDevices[Channel].AFC && (fabs(FreqError)>0.5))
 		{
 			ReTune(Channel, FreqError/1000);
@@ -1358,7 +1706,6 @@ void LoadConfigFile()
 	Config.EnableHabitat = 1;
 	Config.EnableSSDV = 1;
 	Config.EnableTelemetryLogging = 0;
-	Config.EnablePacketLogging = 0;
 	Config.SSDVJpegFolder[0] = '\0';
 	Config.ftpServer[0] = '\0';
 	Config.ftpUser[0] = '\0';
@@ -1367,7 +1714,6 @@ void LoadConfigFile()
 	Config.latitude = -999;
 	Config.longitude = -999;
 	Config.antenna[0] = '\0';
-	Config.EnableDev = 0;
 	
 	if ((fp = fopen(filename, "r")) == NULL)
 	{
@@ -1383,11 +1729,8 @@ void LoadConfigFile()
 	ReadBoolean(fp, "EnableHabitat", 0, &Config.EnableHabitat);
 	ReadBoolean(fp, "EnableSSDV", 0, &Config.EnableSSDV);
 	
-	// Enable telemetry logging
+	// Enable logging
 	ReadBoolean(fp, "LogTelemetry", 0, &Config.EnableTelemetryLogging);
-	
-	// Enable packet logging
-	ReadBoolean(fp, "LogPackets", 0, &Config.EnablePacketLogging);
 
 	// Calling mode
 	Config.CallingTimeout = ReadInteger(fp, "CallingTimeout", 0, 300);
@@ -1424,9 +1767,6 @@ void LoadConfigFile()
 	Config.latitude = ReadFloat(fp, "Latitude");
 	Config.longitude = ReadFloat(fp, "Longitude");
 	ReadString(fp, "antenna", Config.antenna, sizeof(Config.antenna), 0);
-	
-	// Dev mode
-	ReadBoolean(fp, "EnableDev", 0, &Config.EnableDev);
 	
 	// SMS upload to tracker
 	Config.SMSFolder[0] = '\0';
