@@ -1,4 +1,12 @@
-Part of the LoRa Balloon Tracking System
+amended to include functions for AIS packet reconstruction and fowarding over LAN
+amended to include functions for telemetry (Vbat, sleep) reception and publish to ThingSpeak.
+
+
+Original readme.md below; 
+compilation the same (make)
+execution the same (sudo ./gateway)
+
+(no longer) Part of the LoRa Balloon Tracking System
 
 Runs on a Raspberry Pi with 1 or 2 RFM98HW modules attached to the SPI port.
 Also works with other compatible HopeRF and Semtec LoRa devices.
